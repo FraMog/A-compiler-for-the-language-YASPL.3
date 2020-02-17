@@ -1,0 +1,377 @@
+//Destination package
+package parser;
+ 
+import java.util.ArrayList;
+import ast.*;
+import ast.expr.*;
+import ast.stat.*; 
+import ast.leaf.*;
+ 
+parser code {: 
+@Override
+public void syntax_error(java_cup.runtime.Symbol s){
+    System.out.println("compiler has detected a syntax error at line " + (s.left +1)
+        + " column " + (s.right+1));
+}
+:}
+
+
+
+
+
+//Return type is the token's attribute_type.
+terminal HEAD; 
+terminal START; 
+terminal SEMI; 
+terminal INT; 
+terminal BOOL; 
+terminal DOUBLE; 
+terminal STRING; 
+terminal CHAR; 
+terminal String ID; 
+terminal COMMA; 
+terminal DEF; 
+terminal LPAR; 
+terminal RPAR; 
+terminal LGPAR; 
+terminal RGPAR; 
+terminal READ ; 
+terminal WRITE; 
+terminal PLUS; 
+terminal MINUS; 
+terminal TIMES; 
+terminal DIV; 
+terminal Integer INT_CONST; 
+terminal Double DOUBLE_CONST; 
+terminal String STRING_CONST; 
+terminal Character CHAR_CONST; 
+terminal TRUE; 
+terminal FALSE ;  
+terminal ASSIGN; 
+terminal IF; 
+terminal THEN; 
+terminal WHILE; 
+terminal DO; 
+terminal ELSE; 
+terminal GT; 
+terminal GE; 
+terminal LT; 
+terminal LE; 
+terminal EQ; 
+terminal NOT; 
+terminal AND; 
+terminal OR; 
+terminal UMINUS; 
+terminal IN; 
+terminal OUT; 
+terminal INOUT; 
+
+
+
+//Per la precedenza di handle composti da soli non-terminali.
+terminal REL_OP_PRECEDENCE;
+terminal BOOL_OP_PRECEDENCE;
+
+terminal MULT_DIV_OP_PRECEDENCE;
+terminal ADD_DIFF_OP_PRECEDENCE;
+
+
+
+
+//Return type is "RESULT"'s type. Default is Object.
+
+nonterminal Program_Op Programma;
+nonterminal ArrayList<Var_Decl_Op_or_Proc_Decl_Op> Decls;
+nonterminal Proc_Decl_Op Def_decl;
+
+
+nonterminal Var_Decl_Op Var_decl;
+nonterminal ArrayList<Var_Decl_Op> Var_decls;
+
+ 
+ 
+nonterminal ArrayList<Stat> Statements;
+nonterminal Comp_Stat_Op Comp_stat;
+
+
+nonterminal Stat Stat;
+nonterminal ast.leaf.Type Type; 
+nonterminal ArrayList<Var_Init_Op> Var_decls_init;
+nonterminal Expr Var_init_value;
+
+nonterminal ArrayList<Identifier> Vars;
+
+nonterminal ArrayList<Par_Op> Par_decls;
+nonterminal Body_Op Body;
+
+nonterminal ast.leaf.Par_Type Par_type;
+nonterminal ArrayList<Expr> Args; 
+
+
+nonterminal ast.expr.Expr Rel_op;
+nonterminal ast.expr.Expr Expr;
+nonterminal ast.expr.Expr Mult_Div_op;
+nonterminal ast.expr.Expr Add_Diff_op;
+nonterminal ast.expr.Expr Bool_op;
+
+
+
+
+// Genero il parser tramite l'analizzatore Javacup
+
+//Precedence: bottom=higher. Precedence resolves shift/reduce problems.
+//Chiunque non � nelle dichiarazioni, ha la precedenza pi� bassa
+/*
+"Precedence and Associativity declarations" in
+http://www.cs.princeton.edu/~appel/modern/java/CUP/manual.html
+
+CUP � in grado di risolvere conflitti shift/reduce, ossia quelli che, oltre ad
+essere nella grammatica LALR(1), erano anche nella grammatica LR(1) di partenza.
+
+*CUP also assigns each of its productions a precedence. That precedence is equal 
+* to the precedence of the last terminal in that production. If the production 
+* has no terminals, then it has lowest precedence. For example,
+* expr ::= expr TIMES expr would have the same precedence as TIMES.
+* When there is a shift/reduce conflict, the parser determines whether the 
+* terminal to be shifted has a higher precedence, or if the production to reduce 
+* by does. If the terminal has higher precedence, it it shifted, if the production 
+* has higher precedence, a reduce is performed. If they have equal precedence, 
+* associativity of the terminal determine what happens.
+*/
+
+
+
+ 
+precedence right COMMA;
+precedence left OR;
+precedence left BOOL_OP_PRECEDENCE;
+precedence left AND;
+precedence left NOT;
+precedence left GT, GE, LE, LT, EQ;
+precedence left REL_OP_PRECEDENCE;
+precedence left PLUS, MINUS;
+precedence left ADD_DIFF_OP_PRECEDENCE;
+precedence left TIMES, DIV;
+precedence left MULT_DIV_OP_PRECEDENCE; 
+precedence right UMINUS;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+This indicates which non-terminal is the start or goal non-terminal for parsing. 
+If a start non-terminal is not explicitly declared, then the non-terminal on 
+the left hand side of the first production will be used. At the end of a 
+successful parse, CUP  returns an object of type java_cup.runtime.Symbol. 
+*/
+
+
+ 
+start with Programma;
+
+
+Programma ::=  HEAD Decls:d START Statements:s
+			{: System.out.println("SUCCESS IN SYNTAX ANALYSIS!");  Program_Op program_op = new Program_Op( d,s); RESULT= program_op;  :}
+;
+
+
+Decls ::= Var_decl:v Decls:array  {:array.add(0,v); RESULT=array; :}
+		| Def_decl:d Decls:array  {:array.add(0,d); RESULT=array; :}
+		|  {: ArrayList <Var_Decl_Op_or_Proc_Decl_Op>  var_decls_or_def_decls = new ArrayList<Var_Decl_Op_or_Proc_Decl_Op>();			
+			RESULT=var_decls_or_def_decls ;
+			
+			:}
+;
+
+Statements ::= Stat:stat Statements:stmts {: stmts.add(0,stat); RESULT= stmts; :}
+			| {: ArrayList<Stat> stmts = new ArrayList<Stat>(); RESULT=stmts; :}
+;
+
+
+
+
+Type ::= INT {: RESULT=  new Type(SPECSSym.INT); :}
+  		| BOOL {: RESULT=  new Type(SPECSSym.BOOL);  :}
+		| DOUBLE {: RESULT=  new Type(SPECSSym.DOUBLE);  :}
+		| STRING  {: RESULT=  new Type(SPECSSym.STRING);  :}
+		| CHAR {: RESULT=  new Type(SPECSSym.CHAR);  :}
+;
+
+
+Var_decl ::= Type:t Var_decls_init:v SEMI {: Var_Decl_Op var_decl_op= new Var_Decl_Op(t, v);
+			RESULT=  var_decl_op; :}
+;
+
+
+Var_decls ::= Var_decl:v Var_decls:var_decls {: var_decls.add(0,v); RESULT=var_decls; :}
+			|   {: ArrayList<Var_Decl_Op> var_decls= new ArrayList<Var_Decl_Op> ();
+				RESULT = var_decls;  :}
+;
+
+//Var_Init_Op
+Var_decls_init ::= ID:id Var_init_value:init COMMA Var_decls_init:var_init_ops {:
+
+				Identifier identifier = new Identifier(SPECSSym.ID, id);
+				
+				Var_Init_Op var_init_op = new Var_Init_Op(identifier, init);
+				var_init_ops.add(0,var_init_op);
+				RESULT= var_init_ops;
+				:}
+				
+				| ID:id Var_init_value:init {: 		
+				Identifier identifier = new Identifier(SPECSSym.ID, id);	
+				ArrayList<Var_Init_Op> var_init_ops = new ArrayList<Var_Init_Op>();
+				Var_Init_Op var_init_op = new Var_Init_Op(identifier, init);
+				var_init_ops.add(0,var_init_op);
+				RESULT= var_init_ops;
+				:}
+;
+
+
+Var_init_value ::= ASSIGN Expr:e {: RESULT= e; :}
+				|  {: RESULT= null; /* epsilon in var_init_value */ :}
+;
+
+
+Vars ::= ID:id COMMA Vars:vars  {: Identifier identifier = new Identifier(SPECSSym.ID, id); 
+								 vars.add(0,identifier); RESULT=vars; :}
+
+		| ID:id {: Identifier identifier = new Identifier(SPECSSym.ID, id); 
+					
+					ArrayList<Identifier> vars= new ArrayList<Identifier>();
+		 			vars.add(0,identifier);  RESULT=vars; :} 
+;
+
+
+Def_decl ::= DEF ID:id LPAR Par_decls:p RPAR Body:body  {: 
+			Identifier identifier = new Identifier(SPECSSym.ID, id);
+			Proc_Decl_Op proc_decl_op = new Proc_Decl_Op(identifier, p, body);
+			RESULT= proc_decl_op;
+			 :}
+			 
+		|  DEF ID:id LPAR  RPAR Body:body {: 
+			Identifier identifier = new Identifier(SPECSSym.ID, id);
+			Proc_Decl_Op proc_decl_op = new Proc_Decl_Op(identifier, null, body); 
+			RESULT= proc_decl_op; :}
+;
+
+
+
+  //pds un arra di Par_Op.
+Par_decls  ::= Par_type:pt Type:t ID:id COMMA Par_decls:pds {: 
+				Identifier identifier = new Identifier(SPECSSym.ID, id);
+				Par_Op par_Op = new Par_Op(); 
+				par_Op.setType(t);  par_Op.setPar_type(pt); 
+			 	par_Op.setIdentifier(identifier);
+				pds.add(0,par_Op); RESULT= pds; :}
+				
+			| Par_type:pt Type:t ID:id {: Par_Op par_Op = new Par_Op(); 
+			 Identifier identifier = new Identifier(SPECSSym.ID, id);
+			 par_Op.setType(t);  par_Op.setPar_type(pt); 
+			 par_Op.setIdentifier(identifier); 
+			 //Inizializzazione Array all'ultimo passo ricorsivo.
+			 ArrayList <Par_Op> pds = new ArrayList<Par_Op>();
+			 pds.add(0,par_Op);
+			 RESULT=pds; :}
+;
+
+
+Par_type ::= IN  {: RESULT= new Par_Type(SPECSSym.IN); :}
+		| OUT  {: RESULT=  new Par_Type(SPECSSym.OUT); :}
+		| INOUT {:  RESULT=  new Par_Type(SPECSSym.INOUT);  :}
+
+
+;
+
+
+Body ::= LGPAR Var_decls:v Statements:s RGPAR {: Body_Op body_op = new Body_Op(v,s); RESULT=body_op; :}
+;
+
+
+Stat ::=  Vars:v READ SEMI {: Read_Op readOp= new Read_Op(v); RESULT= readOp; :}
+	 | Args:a WRITE SEMI {: Write_Op writeOp= new Write_Op(a); RESULT= writeOp; :}
+	 | ID:id ASSIGN Expr:e SEMI {: 
+	 							Identifier identifier = new Identifier(SPECSSym.ID, id);
+	 							Assign_Op assignOp= new Assign_Op(identifier,e); RESULT= assignOp; :}
+	 | ID:id LPAR Args:a RPAR SEMI {: Identifier identifier = new Identifier(SPECSSym.ID, id);
+	 								Call_Op c= new Call_Op(identifier, a); RESULT=c; :}
+	 | ID:id LPAR RPAR SEMI{: Identifier identifier = new Identifier(SPECSSym.ID, id); 
+	 						  Call_Op c= new Call_Op(identifier, null); RESULT=c; :}
+	 | IF LPAR Expr:e RPAR THEN Comp_stat:c1 ELSE Comp_stat:c2 {: 
+	 	If_Then_Else_Op if_then_else = new If_Then_Else_Op(e,c1,c2); RESULT= if_then_else;  :}
+	 | IF LPAR Expr:e RPAR THEN Comp_stat:c {: If_Then_Op if_then = new If_Then_Op(e,c); RESULT= if_then;   :}
+	 | WHILE LPAR Expr:e RPAR DO Comp_stat:c {: While_Op while_op = new While_Op(e,c); RESULT=while_op; :}
+;
+
+
+
+Args ::= Expr:e COMMA  Args:a {: a.add(0,e); RESULT=a;  :}
+	 |  Expr:e {: ArrayList <Expr> exp_array = new ArrayList<Expr>();
+	 	exp_array.add(0,e);
+	 	RESULT=exp_array;
+	 	:}
+	 |  ID:id COMMA Args:a {: 
+	 							Expr expr = new Expr();
+	 							expr.setIdentifier(new Identifier(SPECSSym.ID, id));
+	 							a.add(0,expr);
+	 							RESULT=a; :}
+;
+
+
+Comp_stat ::= LGPAR Statements:s RGPAR {: RESULT= new Comp_Stat_Op (s); :}
+;
+
+
+Expr ::= Expr:e1 Mult_Div_op:m Expr:e2	{: m.setExpr_ref_1(e1); m.setExpr_ref_2(e2); RESULT=m; :} %prec MULT_DIV_OP_PRECEDENCE
+	 | Expr:e1 Add_Diff_op:a Expr:e2	{: a.setExpr_ref_1(e1); a.setExpr_ref_2(e2); RESULT=a; :} %prec ADD_DIFF_OP_PRECEDENCE
+	 
+	 | Expr:e1 Bool_op:b Expr:e2 {: /* b is AndOp or OrOp */
+	 	b.setExpr_ref_1(e1); b.setExpr_ref_2(e2); RESULT=b; :} %prec BOOL_OP_PRECEDENCE
+	 | Expr:e1 Rel_op:r Expr:e2 {: r.setExpr_ref_1(e1);  r.setExpr_ref_2(e2); RESULT= r; :} %prec REL_OP_PRECEDENCE
+	 | MINUS Expr:e1 {: Expr e= new Uminus_Op(); e.setExpr_ref(e1);  RESULT=e; :} %prec UMINUS
+	 | NOT Expr:e1 {: Expr e= new Not_Op(); e.setExpr_ref(e1);  RESULT=e; :}
+	 | LPAR Expr:e RPAR {: RESULT=e; :}
+	 | TRUE {: Constant c = new Constant(SPECSSym.BOOL, new Boolean(true)); Expr e= new Expr(); e.setConst(c); RESULT=e; :}
+	 | FALSE {: Constant c = new Constant(SPECSSym.BOOL, new Boolean(false)); Expr e= new Expr();  e.setConst(c);  RESULT=e; :}
+	 | ID:id {: Identifier identifier = new Identifier(SPECSSym.ID, id);
+	 			Expr e= new Expr(); e.setIdentifier(identifier); RESULT=e; :}
+	 | INT_CONST:i {: Constant c = new Constant(SPECSSym.INT_CONST, i); Expr e= new Expr(); e.setConst(c); RESULT=e; :}
+	 | DOUBLE_CONST:d {:  Constant c = new Constant(SPECSSym.DOUBLE_CONST, d); Expr e= new Expr(); e.setConst(c); RESULT=e; :}
+	 | CHAR_CONST:c1 {: Constant c = new Constant(SPECSSym.CHAR_CONST, c1); Expr e= new Expr(); e.setConst(c); RESULT=e; :}
+	 | STRING_CONST:s {: Constant c = new Constant(SPECSSym.STRING_CONST, s); Expr e= new Expr(); e.setConst(c); RESULT=e; :}
+;
+
+
+Add_Diff_op ::= PLUS {: RESULT = new AddOp(); :}
+ 	     |  MINUS  {: RESULT = new DiffOp(); :}
+		 ;
+		 
+Mult_Div_op ::=	TIMES  {: RESULT = new Mul_Op(); :}
+		 |  DIV {: RESULT = new DivOp(); :}
+;
+
+
+Bool_op ::= AND {: RESULT = new AndOp(); :}
+		| OR  {: RESULT = new OrOp(); :}
+;
+
+Rel_op  ::=  GT {: RESULT = new GTOp(); :}
+		| GE {: RESULT = new GEOp(); :}
+		| LT {: RESULT = new LTOp(); :}
+		| LE {: RESULT = new LEOp(); :}
+		| EQ {: RESULT = new EQOp(); :}
+;
+
+
+
+
